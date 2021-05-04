@@ -1,9 +1,10 @@
 const express = require("express")
 const Users = require("./users-model")
+const { restrict } = require("./users-middleware")
 
 const router = express.Router()
 
-router.get("/users", async (req, res, next) => {
+router.get("/users", restrict(), async (req, res, next) => {
 	try {
 		res.json(await Users.find())
 	} catch(err) {
