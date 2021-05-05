@@ -1,4 +1,5 @@
 const express = require("express")
+const bcrypt = require("bcryptjs")
 const Users = require("./users-model")
 const { restrict } = require("./users-middleware")
 
@@ -25,7 +26,7 @@ router.post("/users", async (req, res, next) => {
 
 		const newUser = await Users.add({
 			username,
-			password,
+			password: await bcrypt.hash(password, 14),
 		})
 
 		res.status(201).json(newUser)
@@ -45,10 +46,37 @@ router.post("/login", async (req, res, next) => {
 			})
 		}
 
+		// compare the plain text password from the request body,
+		// to the hashed password we already have in the database
+		const passwordValid = await bcrypt.compare(password, user.password)
+
+		if (!passwordValid) {
+			return res.status(401).json({
+				message: "Invalid Credentials",
+			})
+		}
+
+		// create a new session for this user
+		req.session.user = user
+
 		res.json({
 			message: `Welcome ${user.username}!`,
 		})
 	} catch(err) {
+		next(err)
+	}
+})
+
+router.get("/logout", restrict(), async (req, res, next) => {
+	try {
+		req.session.destroy((err) => {
+			if (err) {
+				next(err)
+			} else {
+				res.status(204).end()
+			}
+		})
+	} catch (err) {
 		next(err)
 	}
 })
